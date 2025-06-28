@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="ms">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard ISD PTIS Kedah</title>
+    <!-- Memuatkan Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Memuatkan Font Inter dari Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Memuatkan Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #f0f2f5; }
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: #f1f1f1; }
+        ::-webkit-scrollbar-thumb { background: #888; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #555; }
+        .fade-in { animation: fadeIn 0.5s ease-in-out; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
+        /* Gaya untuk butang tahun aktif */
+        .year-btn.active {
+            background-color: #2563EB;
+            color: white;
+            font-weight: 700;
+        }
+    </style>
+</head>
+<body class="antialiased text-gray-800">
+
+    <div class="container mx-auto p-4 md:p-6 lg:p-8">
+        <!-- Bahagian Header -->
+        <header class="flex flex-col md:flex-row justify-between items-start md:items-center mb-6">
+            <div>
+                <h1 class="text-3xl font-bold text-gray-800">Dashboard ISD PTIS Kedah</h1>
+                <p class="text-gray-500 mt-1">Analisis Tiket Aduan</p>
+            </div>
+            <!-- Butang Tahun -->
+            <div class="flex items-center space-x-2 mt-4 md:mt-0">
+                <button id="btn-year-2024" class="year-btn px-4 py-2 bg-white text-gray-700 rounded-lg shadow-sm transition">2024</button>
+                <button id="btn-year-2025" class="year-btn px-4 py-2 bg-white text-gray-700 rounded-lg shadow-sm transition active">2025</button>
+            </div>
+        </header>
+
+        <!-- Bahagian Penapis & Butang Reset -->
+        <div class="flex flex-col md:flex-row items-start gap-4 mb-6 fade-in">
+            <!-- **PEMBAIKAN: Susun atur 2 baris untuk penapis** -->
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-4 w-full">
+                <select id="filter-daerah" class="filter-dropdown w-full p-2.5 bg-white border border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"><option value="">Semua Daerah</option></select>
+                <select id="filter-technician" class="filter-dropdown w-full p-2.5 bg-white border border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"><option value="">Semua Juruteknik</option></select>
+                <select id="filter-group" class="filter-dropdown w-full p-2.5 bg-white border border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"><option value="">Semua Kumpulan</option></select>
+                <select id="filter-category" class="filter-dropdown w-full p-2.5 bg-white border border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"><option value="">Semua Kategori</option></select>
+                <select id="filter-subcategory" class="filter-dropdown w-full p-2.5 bg-white border border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"><option value="">Semua Subkategori</option></select>
+                <select id="filter-status" class="filter-dropdown w-full p-2.5 bg-white border border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"><option value="">Semua Status</option></select>
+                <!-- **PENAMBAHAN: Dropdown untuk Status SLA** -->
+                <select id="filter-sla" class="filter-dropdown w-full p-2.5 bg-white border border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"><option value="">Semua Status SLA</option></select>
+                <select id="filter-month" class="filter-dropdown w-full p-2.5 bg-white border border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"><option value="">Semua Bulan</option></select>
+            </div>
+            <button id="reset-button" class="w-full mt-4 md:mt-0 md:w-auto px-4 py-2.5 bg-red-500 text-white font-semibold rounded-lg shadow-sm hover:bg-red-600 transition flex-shrink-0">Reset</button>
+        </div>
+        
+        <!-- Mesej Memuatkan & Ralat -->
+        <div id="loading" class="text-center p-10"><div class="flex justify-center items-center space-x-2"><svg class="animate-spin h-5 w-5 text-blue-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg><span class="text-lg text-gray-600">Memuatkan data dari Google Sheet...</span></div></div>
+        <div id="error" class="hidden p-4 mb-4 text-sm text-red-800 rounded-lg bg-red-100" role="alert"></div>
+
+        <!-- Metrik Utama -->
+        <div id="metrics" class="hidden grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-6 fade-in">
+             <div class="bg-white p-6 rounded-xl shadow-md flex items-center justify-between"><div class="flex-grow"><p class="text-sm font-medium text-gray-500">Jumlah Semua Laporan</p><p id="grand-total-tickets" class="text-3xl font-bold text-gray-800">0</p></div><div class="bg-indigo-100 p-3 rounded-full"><svg class="w-6 h-6 text-indigo-600" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20V10H4V20H12Z"/><path d="M20 20V4H12V10H20Z"/></svg></div></div>
+             <div class="bg-white p-6 rounded-xl shadow-md flex items-center justify-between"><div class="flex-grow"><p class="text-sm font-medium text-gray-500">Jumlah Tiket Dipaparkan</p><p id="total-tickets" class="text-3xl font-bold text-gray-800">0</p></div><div class="bg-blue-100 p-3 rounded-full"><svg class="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path></svg></div></div>
+        </div>
+
+        <!-- Bahagian Carta -->
+        <div id="charts-container" class="hidden grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6 mb-6 fade-in">
+            <div class="bg-white p-4 rounded-xl shadow-md"><canvas id="daerahChart"></canvas></div>
+            <div class="bg-white p-4 rounded-xl shadow-md"><canvas id="bulanChart"></canvas></div>
+            <div class="bg-white p-4 rounded-xl shadow-md"><canvas id="kumpulanChart"></canvas></div>
+            <div class="bg-white p-4 rounded-xl shadow-md"><canvas id="subkategoriChart"></canvas></div>
+            <div class="bg-white p-4 rounded-xl shadow-md"><canvas id="statusChart"></canvas></div>
+            <div class="bg-white p-4 rounded-xl shadow-md"><canvas id="jobDoneChart"></canvas></div>
+        </div>
+
+        <!-- Jadual Data -->
+        <div class="bg-white rounded-xl shadow-md overflow-hidden fade-in mt-6">
+            <div class="overflow-x-auto"><table id="dataTable" class="w-full text-sm text-left text-gray-600 hidden"><thead class="text-xs text-gray-700 uppercase bg-gray-100"><tr><th scope="col" class="px-6 py-3">ID</th><th scope="col" class="px-6 py-3">Masa Dicipta</th><th scope="col" class="px-6 py-3">Sekolah</th><th scope="col" class="px-6 py-3">Daerah</th><th scope="col" class="px-6 py-3">Juruteknik</th><th scope="col" class="px-6 py-3">Subkategori</th><th scope="col" class="px-6 py-3">Status</th><th scope="col" class="px-6 py-3">Job Done</th></tr></thead><tbody id="data-body"></tbody></table></div>
+        </div>
+        <div id="no-data" class="hidden text-center p-10 bg-white rounded-xl shadow-md mt-6"><p class="text-gray-500">Tiada data ditemui untuk padanan penapis ini.</p></div>
+    </div>
+
+    <script>
+        // --- KONFIGURASI ---
+        const webAppUrl = 'https://script.google.com/macros/s/AKfycbxPBWl1LApOKJR7e7Uch5Dv9HTkPHIyMVnKM4Ej5LHcMC2P4TPHa75EcldLMY6C42N_/exec';
+        const monthNames = ["Jan", "Feb", "Mac", "Apr", "Mei", "Jun", "Jul", "Ogo", "Sep", "Okt", "Nov", "Dis"];
+        const SLA_COLUMN_KEY = 'seventyTwoHours';
+
+        // --- PEMBOLEHUBAH GLOBAL ---
+        let allData = [];
+        let chartInstances = {};
+        let selectedYear = 2025;
+        const dropdowns = document.querySelectorAll('.filter-dropdown');
+        const elements = {
+            loading: document.getElementById('loading'), error: document.getElementById('error'),
+            dataTable: document.getElementById('dataTable'), noData: document.getElementById('no-data'),
+            tableBody: document.getElementById('data-body'), metrics: document.getElementById('metrics'),
+            charts: document.getElementById('charts-container'), totalTickets: document.getElementById('total-tickets'),
+            grandTotalTickets: document.getElementById('grand-total-tickets'),
+            btnYear2024: document.getElementById('btn-year-2024'),
+            btnYear2025: document.getElementById('btn-year-2025'),
+            resetButton: document.getElementById('reset-button')
+        };
+        
+        const colorPalettes = {
+            daerah: ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899', '#6366F1', '#14B8A6', '#F97316', '#D946EF'],
+            status: ['#22C55E', '#F59E0B', '#3B82F6', '#6B7280', '#A855F7'],
+            kumpulan: ['#84CC16', '#38BDF8', '#F43F5E', '#F97316'],
+            subkategori: ['#7c3aed', '#db2777', '#ea580c', '#16a34a', '#0284c7', '#4f46e5'],
+            bulan: ['#06B6D4', '#0891B2', '#0E7490', '#155E75', '#164E63', '#0284c7', '#0369a1', '#075985', '#0c4a6e', '#082f49', '#115e59', '#0f766e'],
+            jobDone: ['#16A34A', '#DC2626']
+        };
+
+        // --- FUNGSI UTAMA ---
+        function processData(serverData) {
+            elements.loading.style.display = 'none';
+            if (serverData.error) {
+                elements.error.textContent = `Ralat dari Google Apps Script:\n${serverData.error}\nStack:\n${serverData.stack}`;
+                elements.error.style.display = 'block'; return;
+            }
+
+            const validData = serverData.filter(item => new Date(item.createdTime).getFullYear() !== 1899);
+            elements.grandTotalTickets.textContent = validData.length;
+            allData = validData.map(item => ({...item, month: new Date(item.createdTime).getMonth(), year: new Date(item.createdTime).getFullYear()}));
+            
+            updateUI();
+            elements.metrics.style.display = 'grid';
+            elements.charts.style.display = 'grid';
+        }
+        
+        function updateUI() {
+            updateYearButtonStyles();
+            const yearData = allData.filter(item => item.year === selectedYear);
+            updateDependentDropdowns(yearData);
+            const currentFilters = getCurrentFilters();
+            const filteredData = applyAllFilters(yearData, currentFilters);
+            updateDashboard(filteredData);
+        }
+
+        function updateDashboard(data) {
+            elements.totalTickets.textContent = data.length;
+            renderTable(data);
+            updateAllCharts(data);
+        }
+        
+        // --- LOGIK PENAPISAN (FILTERING) ---
+        function getCurrentFilters() {
+            const filters = {};
+            dropdowns.forEach(d => { const key = d.id.replace('filter-', ''); filters[key] = d.value; });
+            return filters;
+        }
+
+        function applyAllFilters(data, filters) {
+            return data.filter(item => 
+                (filters.daerah === '' || item.daerah === filters.daerah) && 
+                (filters.group === '' || item.group === filters.group) && 
+                (filters.technician === '' || item.technician === filters.technician) && 
+                (filters.category === '' || item.category === filters.category) && 
+                (filters.subcategory === '' || item.subcategory === filters.subcategory) && 
+                (filters.status === '' || item.requestStatus === filters.status) && 
+                (filters.month === '' || item.month.toString() === filters.month) &&
+                // **PEMBAIKAN: Tambah logik penapisan untuk SLA**
+                (filters.sla === '' || item[SLA_COLUMN_KEY] === filters.sla)
+            );
+        }
+        
+        function updateDependentDropdowns(data) {
+            const filters = getCurrentFilters();
+            const dataForDaerah = filters.daerah ? data.filter(item => item.daerah === filters.daerah) : data;
+            populateDropdown('group', getUniqueValues(dataForDaerah, 'group'));
+            populateDropdown('technician', getUniqueValues(dataForDaerah, 'technician'));
+            const dataForKategori = filters.category ? data.filter(item => item.category === filters.category) : data;
+            populateDropdown('subcategory', getUniqueValues(dataForKategori, 'subcategory'));
+            
+            // Lungsur bebas
+            populateDropdown('daerah', getUniqueValues(data, 'daerah'));
+            populateDropdown('category', getUniqueValues(data, 'category'));
+            populateDropdown('status', getUniqueValues(data, 'requestStatus'));
+            const monthOptions = getUniqueValues(data, 'month').map(m => ({ value: m, text: monthNames[m] }));
+            populateDropdown('month', monthOptions, true);
+            // **PENAMBAHAN: Isi pilihan untuk dropdown SLA**
+            populateDropdown('sla', getUniqueValues(data, SLA_COLUMN_KEY));
+        }
+        
+        function resetDashboard() { resetAllFilters(); updateUI(); }
+        function resetAllFilters() { dropdowns.forEach(d => d.value = ""); }
+
+        // --- FUNGSI PEMAPARAN (RENDERING) ---
+        function renderTable(data) {
+            elements.tableBody.innerHTML = ''; 
+            if (data.length === 0) { elements.dataTable.style.display = 'none'; elements.noData.style.display = 'block'; return; }
+            elements.dataTable.style.display = 'table';
+            elements.noData.style.display = 'none';
+
+            data.forEach(item => {
+                let row = elements.tableBody.insertRow();
+                row.className = 'bg-white border-b hover:bg-gray-50';
+                row.insertCell().textContent = item.requestID;
+                row.cells[0].className = 'px-6 py-4 font-medium text-gray-900 whitespace-nowrap';
+                row.insertCell().textContent = new Date(item.createdTime).toLocaleString('ms-MY', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+                row.cells[1].className = 'px-6 py-4';
+                row.insertCell().textContent = item.userSchoolName;
+                row.cells[2].className = 'px-6 py-4';
+                row.insertCell().textContent = item.daerah;
+                row.cells[3].className = 'px-6 py-4';
+                row.insertCell().textContent = item.technician;
+                row.cells[4].className = 'px-6 py-4';
+                row.insertCell().textContent = item.subcategory;
+                row.cells[5].className = 'px-6 py-4';
+                let statusCell = row.insertCell(); statusCell.className = 'px-6 py-4';
+                let statusSpan = document.createElement('span'); statusSpan.textContent = item.requestStatus;
+                statusSpan.className = getStatusBadge(item.requestStatus); statusCell.appendChild(statusSpan);
+                let jobDoneCell = row.insertCell(); jobDoneCell.className = 'px-6 py-4';
+                let jobDoneSpan = document.createElement('span');
+                jobDoneSpan.textContent = item[SLA_COLUMN_KEY];
+                jobDoneSpan.className = getJobDoneBadge(item[SLA_COLUMN_KEY]);
+                jobDoneCell.appendChild(jobDoneSpan);
+            });
+        }
+        
+        function updateYearButtonStyles() {
+            elements.btnYear2024.classList.toggle('active', selectedYear === 2024);
+            elements.btnYear2025.classList.toggle('active', selectedYear === 2025);
+        }
+        
+        // --- FUNGSI CARTA ---
+        function updateAllCharts(data) {
+            createOrUpdateChart('daerahChart', 'bar', 'Aduan ikut Daerah', prepareChartData(data, 'daerah'), colorPalettes.daerah);
+            createOrUpdateChart('bulanChart', 'bar', 'Aduan ikut Bulan', prepareChartData(data, 'month', true), colorPalettes.bulan);
+            createOrUpdateChart('kumpulanChart', 'doughnut', 'Aduan ikut Kumpulan', prepareChartData(data, 'group'), colorPalettes.kumpulan);
+            createOrUpdateChart('subkategoriChart', 'bar', 'Aduan ikut Subkategori', prepareChartData(data, 'subcategory'), colorPalettes.subkategori, true);
+            createOrUpdateChart('statusChart', 'pie', 'Aduan ikut Status', prepareChartData(data, 'requestStatus'), colorPalettes.status);
+            createOrUpdateChart('jobDoneChart', 'pie', 'Status SLA (72 Jam)', prepareChartData(data, SLA_COLUMN_KEY), colorPalettes.jobDone);
+        }
+
+        function prepareChartData(data, key, isMonth = false) {
+            const counts = data.reduce((acc, item) => {
+                const value = item[key];
+                if (value || value === 0) { acc[value] = (acc[value] || 0) + 1; } return acc;
+            }, {});
+            let sorted = Object.entries(counts);
+            if (isMonth) sorted.sort((a, b) => a[0] - b[0]); else sorted.sort((a, b) => b[1] - a[1]);
+            return { labels: sorted.map(e => isMonth ? monthNames[e[0]] : e[0]), values: sorted.map(e => e[1]) };
+        }
+
+        function createOrUpdateChart(canvasId, type, title, chartData, colors, isHorizontal = false) {
+            if (chartInstances[canvasId]) chartInstances[canvasId].destroy();
+            const ctx = document.getElementById(canvasId).getContext('2d');
+            chartInstances[canvasId] = new Chart(ctx, { type: type, data: { labels: chartData.labels, datasets: [{ label: 'Bilangan Aduan', data: chartData.values, backgroundColor: colors, borderColor: type === 'bar' ? colors.map(c => c.replace('0.5', '1')) : '#fff', borderWidth: type === 'bar' ? 1 : 2 }] }, options: { indexAxis: isHorizontal ? 'y' : 'x', responsive: true, maintainAspectRatio: false, plugins: { legend: { display: type !== 'bar', position: 'bottom', labels: { boxWidth: 12, padding: 15 } }, title: { display: true, text: title, font: { size: 16, weight: '600' }, color: '#374151', padding: { top: 10, bottom: 20 } } }, scales: (type === 'bar') ? { y: { beginAtZero: true, ticks: { precision: 0 } }, x: { grid: { display: false } } } : {} } });
+        }
+
+        // --- FUNGSI BANTUAN (HELPERS) ---
+        function getStatusBadge(status) {
+            const base = 'px-2.5 py-1 text-xs font-medium rounded-full';
+            if (!status) return `${base} bg-gray-100 text-gray-800`;
+            switch (status.toLowerCase()) { case 'selesai': return `${base} bg-green-100 text-green-800`; case 'dalam tindakan': return `${base} bg-yellow-100 text-yellow-800`; case 'baharu': return `${base} bg-blue-100 text-blue-800`; case 'ditutup': return `${base} bg-gray-100 text-gray-800`; default: return `${base} bg-purple-100 text-purple-800`; }
+        }
+        function getJobDoneBadge(status) {
+            const base = 'px-2.5 py-1 text-xs font-medium rounded-full';
+            if (!status) return `${base} bg-gray-100 text-gray-800`;
+            if (status.toLowerCase().includes('dalam')) return `${base} bg-green-100 text-green-800`;
+            if (status.toLowerCase().includes('melebihi')) return `${base} bg-red-100 text-red-800`;
+            return `${base} bg-gray-100 text-gray-800`;
+        }
+        function getUniqueValues(data, key) {
+            const unique = [...new Set(data.map(item => item[key]).filter(Boolean))];
+            try { return unique.sort((a, b) => a.localeCompare(b, undefined, {numeric: true})); } catch(e) { return unique.sort(); }
+        }
+        function populateDropdown(elementId, options, isMonth = false) {
+            const select = document.getElementById(`filter-${elementId}`);
+            const currentValue = select.value; const firstOption = select.options[0]; select.innerHTML = ''; select.appendChild(firstOption);
+            options.forEach(option => {
+                const opt = document.createElement('option');
+                if (isMonth) { opt.value = option.value; opt.textContent = option.text; } else { opt.value = option; opt.textContent = option; }
+                select.appendChild(opt);
+            });
+            if (Array.from(select.options).some(o => o.value === currentValue)) { select.value = currentValue; } else { select.value = ""; }
+        }
+
+        // --- PENDENGAR ACARA (EVENT LISTENERS) ---
+        dropdowns.forEach(d => d.addEventListener('change', updateUI));
+        elements.resetButton.addEventListener('click', resetDashboard);
+        elements.btnYear2024.addEventListener('click', () => {
+            selectedYear = 2024;
+            resetAllFilters();
+            updateUI();
+        });
+        elements.btnYear2025.addEventListener('click', () => {
+            selectedYear = 2025;
+            resetAllFilters();
+            updateUI();
+        });
+
+        // --- MEMULAKAN PROSES ---
+        const script = document.createElement('script');
+        script.src = `${webAppUrl}?callback=processData`;
+        script.onerror = function() { elements.loading.style.display = 'none'; elements.error.textContent = 'Gagal memuatkan skrip. Sila pastikan URL Aplikasi Web betul dan semak sambungan internet anda.'; elements.error.style.display = 'block'; };
+        document.head.appendChild(script);
+    </script>
+</body>
+</html>
